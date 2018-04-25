@@ -30,7 +30,7 @@ public class ContactAdapter  extends ArrayAdapter<Contact> {
         this.context = context;
         this.data = data;
     }
- 
+
     public View getView(int position, View convertView, ViewGroup parent) {
         LayoutInflater inflater = (LayoutInflater) context
                 .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
