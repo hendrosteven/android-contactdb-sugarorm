@@ -1,13 +1,19 @@
 package brainmatics.com.contactdb;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.PopupMenu;
 import android.util.Base64;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -19,6 +25,11 @@ import com.mobsandgeeks.saripaar.annotation.Email;
 import com.mobsandgeeks.saripaar.annotation.NotEmpty;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import brainmatics.com.entity.Contact;
@@ -54,6 +65,7 @@ public class InputActivity extends AppCompatActivity implements Validator.Valida
     private Bitmap bitmap;
 
     static final int CAMERA_INTENT = 1999;
+    static final int GALLERY_INTENT = 1888;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -134,19 +146,78 @@ public class InputActivity extends AppCompatActivity implements Validator.Valida
 
     @OnClick(R.id.imgPhoto)
     public void imgPhotoOnClick(){
-        Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-        startActivityForResult(cameraIntent,InputActivity.CAMERA_INTENT);
+        PopupMenu popup = new PopupMenu(InputActivity.this, imgPhoto, Gravity.CENTER);
+        try {
+            Field[] fields = popup.getClass().getDeclaredFields();
+            for (Field field : fields) {
+                if ("mPopup".equals(field.getName())) {
+                    field.setAccessible(true);
+                    Object menuPopupHelper = field.get(popup);
+                    Class<?> classPopupHelper = Class.forName(menuPopupHelper
+                            .getClass().getName());
+                    Method setForceIcons = classPopupHelper.getMethod(
+                            "setForceShowIcon", boolean.class);
+                    setForceIcons.invoke(menuPopupHelper, true);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        popup.getMenuInflater().inflate(R.menu.menu_popup, popup.getMenu());
+        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            public boolean onMenuItemClick(MenuItem item) {
+                switch (item.getTitle().toString().toUpperCase().trim()){
+                    case "AMBIL DARI GALLERY" :
+                        Intent intent = new Intent();
+                        intent.setType("image/*");
+                        intent.setAction(Intent.ACTION_GET_CONTENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        startActivityForResult(intent, GALLERY_INTENT);
+                        break;
+                    case "AMBIL DENGAN CAMERA" :
+                        Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                        startActivityForResult(cameraIntent, CAMERA_INTENT);
+                        break;
+                    default:break;
+                }
+                return true;
+            }
+        });
+        popup.show();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == InputActivity.CAMERA_INTENT && resultCode == RESULT_OK) {
+        if (requestCode == CAMERA_INTENT && resultCode == RESULT_OK) {
             if (bitmap != null) {
                 bitmap.recycle();
             }
             bitmap = (Bitmap) data.getExtras().get("data");
             bitmap = getResizedBitmap(bitmap,100,100);
             imgPhoto.setImageBitmap(bitmap);
+        } else  if (requestCode == GALLERY_INTENT && resultCode == Activity.RESULT_OK) {
+            InputStream stream = null;
+            try {
+                if (bitmap != null) {
+                    bitmap.recycle();
+                }
+                stream = getContentResolver().openInputStream(data.getData());
+                bitmap = BitmapFactory.decodeStream(stream);
+                bitmap = getResizedBitmap(bitmap,100,100);
+                imgPhoto.setImageBitmap(bitmap);
+            } catch (FileNotFoundException e) {
+                Log.e("GALLERY ERROR", e.getMessage());
+            } finally {
+                if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
     }
 
