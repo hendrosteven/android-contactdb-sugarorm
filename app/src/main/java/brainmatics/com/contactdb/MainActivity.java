@@ -3,9 +3,12 @@ package brainmatics.com.contactdb;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -16,6 +19,7 @@ import brainmatics.com.adapter.ContactAdapter;
 import brainmatics.com.entity.Contact;
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnItemClick;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -29,6 +33,38 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        registerForContextMenu(listContact);
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v,
+                                    ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_delete, menu);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+        switch (item.getItemId()) {
+            case R.id.mnuDelete:
+                Contact contact = (Contact)listContact.getItemAtPosition(info.position);
+                contact.delete();
+                Toast.makeText(this,"Contact terhapus",Toast.LENGTH_LONG).show();
+                loadAllContact();
+                return true;
+            default:
+                return super.onContextItemSelected(item);
+        }
+    }
+
+    @OnItemClick(R.id.listContact)
+    public void listContactOnItemClick(int position){
+        Contact contact = (Contact)listContact.getItemAtPosition(position);
+        Intent intent = new Intent(this,EditActivity.class);
+        intent.putExtra("ID",contact.getId());
+        startActivity(intent);
     }
 
     @Override
